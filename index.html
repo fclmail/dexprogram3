@@ -147,7 +147,7 @@
     const slippage = parseFloat(document.getElementById("slippage").value);
     const onlyProfit = document.getElementById("onlyProfit").checked;
 
-    let bestProfit = 0;
+    let bestProfit = ethers.BigNumber.from(0);
     let bestTrade = null;
 
     for (const [buyName, buyRouterAddr] of Object.entries(routers)) {
@@ -158,18 +158,20 @@
         const sellRouter = new ethers.Contract(sellRouterAddr, routerABI, provider);
 
         try {
-          const [buyOut] = await buyRouter.getAmountsOut(amountIn, [tokenIn, tokenOut]);
-          const [sellOut] = await sellRouter.getAmountsOut(buyOut, [tokenOut, tokenIn]);
+          const buyOut = await buyRouter.getAmountsOut(amountIn, [tokenIn, tokenOut]);
+          const sellOut = await sellRouter.getAmountsOut(buyOut[1], [tokenOut, tokenIn]);
 
-          const profit = sellOut.sub(amountIn);
+          const profit = sellOut[1].sub(amountIn);
           if (profit.gt(0) && profit.gt(bestProfit)) {
             bestProfit = profit;
             bestTrade = {
               buyName, sellName, buyRouterAddr, sellRouterAddr,
-              tokenOut, amountIn, buyOut, sellOut
+              tokenOut, amountIn, buyOut: buyOut[1], sellOut: sellOut[1]
             };
           }
-        } catch (e) { continue; }
+        } catch (e) {
+          continue;
+        }
       }
     }
 
